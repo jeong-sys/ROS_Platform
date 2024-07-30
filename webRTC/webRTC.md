@@ -14,7 +14,7 @@
 <img src=https://velog.velcdn.com/images%2Fhappyjarban%2Fpost%2F7f5a9c7f-9dde-424e-9b85-70acb90345c1%2Fimage.png>
 
 - NAT 방화벽 우회를 위한 서버 필요
-    - STUN : Client가 공인 IP 얻을 수 있도록 도와줌
+    - STUN : Client가 공인 IP 얻을 수 있도록 도와줌, 클라이언트들이 서로에게 직접 연결이 가능하도록 외부에서 접근 가능한 주소를 알려주는 역할
     - TURN : P2P 연결 실패시 중계 서버 역할
 
 - Signalling
