@@ -2,7 +2,6 @@
 
 let remoteVideo = document.getElementById("remoteVideo");
 let pc;
-let remoteStream;
 
 const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -18,15 +17,11 @@ socket.on('message', (message) => {
             console.error('Received offer in unexpected state:', pc.signalingState);
             return;
         }
-       // signalingState를 로그에 출력하여 올바른 상태 전환을 확인
-        console.log('Signaling state before setting remote description:', pc.signalingState);
 
         pc.setRemoteDescription(new RTCSessionDescription(message))
         .then(() => {
             console.log('Signaling state after setting remote description:', pc.signalingState);
-            if (message.type === 'offer') {
             return pc.createAnswer();
-            }
         })
         .then(answer => {
             if (answer) setLocalAndSendMessage(answer);
@@ -52,12 +47,11 @@ socket.on('message', (message) => {
     }
 });
 
-
 function createPeerConnection() {
     try {
         pc = new RTCPeerConnection(pcConfig);
         pc.onicecandidate = handleIceCandidate;
-        pc.ontrack = handleRemoteStreamAdded;
+        pc.ontrack = handleRemoteStreamAdded; // Ensure this is set correctly
         pc.oniceconnectionstatechange = () => {
             if (pc.iceConnectionState === 'disconnected') {
                 console.log('ICE connection disconnected.');
@@ -69,6 +63,7 @@ function createPeerConnection() {
         return;
     }
 }
+
 
 function handleIceCandidate(event) {
     if (event.candidate) {
@@ -86,11 +81,18 @@ function handleIceCandidate(event) {
 
 function handleRemoteStreamAdded(event) {
     console.log('Remote stream added.');
-    remoteStream = event.streams[0];
-    if (remoteStream) {
-        remoteVideo.srcObject = remoteStream;
+    if (event.streams && event.streams[0]) {
+        remoteVideo.srcObject = event.streams[0];
+    } else if (event.track) {
+        // Create a new MediaStream if only a single track is received
+        let stream = new MediaStream();
+        stream.addTrack(event.track);
+        remoteVideo.srcObject = stream;
+    } else {
+        console.error('No streams or tracks found in the event.');
     }
 }
+
 
 function sendMessage(message) {
     console.log('Client sending message:', message);

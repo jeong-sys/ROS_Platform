@@ -1,7 +1,6 @@
 "use strict";
 
 let localVideo = document.getElementById("localVideo");
-let remoteVideo = document.getElementById("remoteVideo");
 let pc;
 let localStream;
 
@@ -9,13 +8,16 @@ const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-// signalingServerUrl을 환경변수로 설정하는 것도 좋은 방법
-const signalingServerUrl = 'http://192.168.50.100:8080'; // 서버의 IP 주소와 포트
+const signalingServerUrl = 'http://192.168.219.102:8080'; // 서버의 IP 주소와 포트
 const socket = io(signalingServerUrl);
 
 socket.on('message', (message) => {
     if (message.type === 'answer') {
         console.log('Received answer, setting remote description');
+        if (pc.signalingState !== 'have-local-offer') {
+            console.error('Received answer in unexpected state:', pc.signalingState);
+            return;
+        }
         pc.setRemoteDescription(new RTCSessionDescription(message))
           .catch(onCreateSessionDescriptionError);
     } else if (message.type === 'candidate') {
@@ -36,18 +38,21 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         createPeerConnection();
         stream.getTracks().forEach(track => pc.addTrack(track, stream));
     })
-    .catch(error => console.error('Error accessing media devices:', error));
+    .catch(error => console.error('Error accessing media devices.', error));
 
 function createPeerConnection() {
     try {
         pc = new RTCPeerConnection(pcConfig);
         pc.onicecandidate = handleIceCandidate;
-        pc.ontrack = handleRemoteStreamAdded; // 원격 스트림 핸들러
+        pc.ontrack = handleRemoteStreamAdded; // This might not be necessary for the sending side
         pc.oniceconnectionstatechange = () => {
             if (pc.iceConnectionState === 'disconnected') {
                 console.log('ICE connection disconnected.');
             }
         };
+        console.log('PeerConnection created');
+
+        // Create an offer and set it as the local description
         pc.createOffer().then(
             setLocalAndSendMessage,
             onCreateSessionDescriptionError
@@ -57,9 +62,22 @@ function createPeerConnection() {
     }
 }
 
+function handleIceCandidate(event) {
+    if (event.candidate) {
+        console.log('Sending ICE candidate');
+        sendMessage({
+            type: 'candidate',
+            label: event.candidate.sdpMLineIndex,
+            id: event.candidate.sdpMid,
+            candidate: event.candidate.candidate
+        });
+    } else {
+        console.log('End of candidates.');
+    }
+}
+
 function handleRemoteStreamAdded(event) {
-    remoteVideo.srcObject = event.streams[0];
-    console.log('Remote stream added.');
+    console.log('Remote stream added.'); // This is not needed for the sending side
 }
 
 function sendMessage(message) {
