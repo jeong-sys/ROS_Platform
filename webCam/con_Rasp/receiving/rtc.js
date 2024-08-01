@@ -8,9 +8,8 @@ const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-const signalingServerUrl = 'http://192.169.50.100:8080';
+const signalingServerUrl = 'http://192.168.50.100:8080';
 const socket = io.connect(signalingServerUrl);
-
 socket.on('message', (message) => {
     if (message.type === 'offer') {
         console.log('Received offer, setting remote description and creating answer');
@@ -37,39 +36,15 @@ function createPeerConnection() {
     try {
         pc = new RTCPeerConnection(pcConfig);
         pc.onicecandidate = handleIceCandidate;
-        pc.ontrack = handleRemoteStreamAdded;
-        pc.oniceconnectionstatechange = () => {
-            if (pc.iceConnectionState === 'disconnected') {
-                console.log('ICE connection disconnected.');
-            }
-        };
-        console.log('PeerConnection created');
+        pc.ontrack = handleRemoteStreamAdded; // 원격 스트림 핸들러
     } catch (e) {
         console.error('Failed to create PeerConnection:', e);
-        return;
-    }
-}
-
-function handleIceCandidate(event) {
-    if (event.candidate) {
-        console.log('Sending ICE candidate');
-        sendMessage({
-            type: 'candidate',
-            label: event.candidate.sdpMLineIndex,
-            id: event.candidate.sdpMid,
-            candidate: event.candidate.candidate
-        });
-    } else {
-        console.log('End of candidates.');
     }
 }
 
 function handleRemoteStreamAdded(event) {
+    remoteVideo.srcObject = event.streams[0];
     console.log('Remote stream added.');
-    remoteStream = event.streams[0];
-    if (remoteStream) {
-        remoteVideo.srcObject = remoteStream;
-    }
 }
 
 function sendMessage(message) {
@@ -92,7 +67,7 @@ function onCreateSessionDescriptionError(error) {
 
 function start() {
     createPeerConnection();
-    // No need to create offer on the receiving side
+    // Here we do not create an offer, as it's not the client that initiates the connection.
 }
 
 // Start the process
