@@ -3,8 +3,6 @@
 let dataChannelSend = document.getElementById("dataChannelSend");
 let dataChannelReceive = document.getElementById("dataChannelReceive");
 let sendBtn = document.getElementById("send");
-let pcConstraint;
-let dataConstraint;
 let localConnection;
 let remoteConnection;
 let sendChannel;
@@ -15,102 +13,71 @@ sendBtn.onclick = sendData;
 createConnection();
 
 function createConnection() {
-  let servers = null;
-  pcConstraint = null;
-  dataConstraint = null;
+    const servers = null; // STUN/TURN 서버 설정 필요시 추가
+    const pcConfig = {}; // Optional RTC configuration
 
-  window.localConnection = localConnection = new RTCPeerConnection(
-    servers,
-    pcConstraint
-  );
+    // Create local peer connection
+    localConnection = new RTCPeerConnection(servers, pcConfig);
+    
+    // Create data channel on local connection
+    sendChannel = localConnection.createDataChannel("sendDataChannel");
+    sendChannel.onopen = onSendChannelStateChange;
+    sendChannel.onclose = onSendChannelStateChange;
 
-  sendChannel = localConnection.createDataChannel(
-    "sendDataChannel",
-    dataConstraint
-  );
+    // Set up ICE candidate handling for local connection
+    localConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            remoteConnection.addIceCandidate(event.candidate)
+                .then(() => console.log("Local ICE candidate added to remote connection"))
+                .catch(error => console.error("Error adding ICE candidate: ", error));
+        }
+    };
 
-  localConnection.onicecandidate = iceCallback1;
-  sendChannel.onopen = onSendChannelStateChange;
-  sendChannel.onclose = onSendChannelStateChange;
+    // Create remote peer connection
+    remoteConnection = new RTCPeerConnection(servers, pcConfig);
+    remoteConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            localConnection.addIceCandidate(event.candidate)
+                .then(() => console.log("Remote ICE candidate added to local connection"))
+                .catch(error => console.error("Error adding ICE candidate: ", error));
+        }
+    };
+    remoteConnection.ondatachannel = receiveChannelCallback;
 
-  window.remoteConnection = remoteConnection
-  = new RTCPeerConnection(servers,pcConstraint);
-
-  remoteConnection.onicecandidate = iceCallback2;
-  remoteConnection.ondatachannel = receiveChannelCallback;
-
-  localConnection.createOffer().then(
-      gotDescription1,
-      onCreateSessionDescriptionError
-  );
-}
-
-function iceCallback1(event) {
-    console.log('local ice callback')
-  if (event.candidate) {
-    remoteConnection
-      .addIceCandidate(event.candidate)
-      .then(onAddIceCandidateSuccess, onAddIceCandidateError);
-  }
-}
-
-function iceCallback2(event) {
-  if (event.candidate) {
-    localConnection
-      .addIceCandidate(event.candidate)
-      .then(onAddIceCandidateSuccess, onAddIceCandidateError);
-  }
-}
-
-function onAddIceCandidateSuccess() {
-  console.log("AddIce Success");
-}
-
-function onAddIceCandidateError(error) {
-  console.error("AddIce error" + error.toString());
+    // Create and send offer
+    localConnection.createOffer()
+        .then(desc => localConnection.setLocalDescription(desc))
+        .then(() => remoteConnection.setRemoteDescription(localConnection.localDescription))
+        .then(() => remoteConnection.createAnswer())
+        .then(desc => remoteConnection.setLocalDescription(desc))
+        .then(() => localConnection.setRemoteDescription(remoteConnection.localDescription))
+        .catch(error => console.error("Error in SDP exchange: ", error));
 }
 
 function onSendChannelStateChange() {
-  var readyState = sendChannel.readyState;
-//   /trace("Send channel state is: " + readyState);
-  if (readyState === "open") {
-      console.log('opened');
-  } else {
-    console.log('closed');
-}
+    const readyState = sendChannel.readyState;
+    if (readyState === "open") {
+        console.log('Send channel state is: open');
+    } else {
+        console.log('Send channel state is: closed');
+    }
 }
 
-function receiveChannelCallback(event){
+function receiveChannelCallback(event) {
     receiveChannel = event.channel;
     receiveChannel.onmessage = onReceiveMessageCallback;
 }
 
-function onReceiveMessageCallback(event){
+function onReceiveMessageCallback(event) {
     dataChannelReceive.value = event.data;
 }
 
-function gotDescription1(desc){
-    console.log(desc);
-    localConnection.setLocalDescription(desc);
-    remoteConnection.setRemoteDescription(desc);
-    remoteConnection.createAnswer().then(
-        gotDescription2,
-        onCreateSessionDescriptionError
-    );
-}
-
-function gotDescription2(desc){
-    remoteConnection.setLocalDescription(desc);
-    localConnection.setRemoteDescription(desc);
-}
-
-function sendData(){
-    let data = dataChannelSend.value;
-    console.log('btn Data : ',data);
+function sendData() {
+    const data = dataChannelSend.value;
+    console.log('Sending data:', data);
     sendChannel.send(data);
 }
 
-
 function onCreateSessionDescriptionError(error) {
-    console.error('Failed to create session description: ' + error.toString());
-  }
+    console.error('Failed to create session description: ', error.toString());
+}
