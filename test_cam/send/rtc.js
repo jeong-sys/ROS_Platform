@@ -1,7 +1,6 @@
 "use strict";
 
 let localVideo = document.getElementById("localVideo");
-let remoteVideo = document.getElementById("remoteVideo");
 let pc;
 let localStream;
 
@@ -9,8 +8,7 @@ const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-// signalingServerUrl을 환경변수로 설정하는 것도 좋은 방법
-const signalingServerUrl = 'http://192.168.50.100:8080'; // 서버의 IP 주소와 포트
+const signalingServerUrl = 'http://192.168.50.100:8080'; // 서버 IP 주소와 포트
 const socket = io(signalingServerUrl);
 
 socket.on('message', (message) => {
@@ -43,22 +41,32 @@ function createPeerConnection() {
         pc = new RTCPeerConnection(pcConfig);
         pc.onicecandidate = handleIceCandidate;
         pc.ontrack = handleRemoteStreamAdded; // 원격 스트림 핸들러
-        pc.oniceconnectionstatechange = () => {
-            if (pc.iceConnectionState === 'disconnected') {
-                console.log('ICE connection disconnected.');
-            }
-        };
         pc.createOffer().then(
             setLocalAndSendMessage,
             onCreateSessionDescriptionError
         );
     } catch (e) {
         console.error('Failed to create PeerConnection:', e);
+        return;
+    }
+}
+
+function handleIceCandidate(event) {
+    if (event.candidate) {
+        console.log('Sending ICE candidate');
+        sendMessage({
+            type: 'candidate',
+            label: event.candidate.sdpMLineIndex,
+            id: event.candidate.sdpMid,
+            candidate: event.candidate.candidate
+        });
+    } else {
+        console.log('End of candidates.');
     }
 }
 
 function handleRemoteStreamAdded(event) {
-    remoteVideo.srcObject = event.streams[0];
+    // 원격 비디오 스트림을 설정하는 부분
     console.log('Remote stream added.');
 }
 
