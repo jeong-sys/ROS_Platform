@@ -1,3 +1,5 @@
+// http-server -c-1 .    
+
 "use strict";
 
 let dataChannelSend = document.getElementById("dataChannelSend");
