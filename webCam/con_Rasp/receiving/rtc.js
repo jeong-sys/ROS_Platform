@@ -8,17 +8,37 @@ const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-const signalingServerUrl = 'http://192.168.50.100:8080';
+const signalingServerUrl = 'http://192.168.219.102:8080';
 const socket = io.connect(signalingServerUrl);
+
 socket.on('message', (message) => {
     if (message.type === 'offer') {
         console.log('Received offer, setting remote description and creating answer');
+        if (pc.signalingState !== 'stable') {
+            console.error('Received offer in unexpected state:', pc.signalingState);
+            return;
+        }
+       // signalingState를 로그에 출력하여 올바른 상태 전환을 확인
+        console.log('Signaling state before setting remote description:', pc.signalingState);
+
         pc.setRemoteDescription(new RTCSessionDescription(message))
-          .then(() => pc.createAnswer())
-          .then(setLocalAndSendMessage)
-          .catch(onCreateSessionDescriptionError);
+        .then(() => {
+            console.log('Signaling state after setting remote description:', pc.signalingState);
+            if (message.type === 'offer') {
+            return pc.createAnswer();
+            }
+        })
+        .then(answer => {
+            if (answer) setLocalAndSendMessage(answer);
+        })
+        .catch(onCreateSessionDescriptionError);
+
     } else if (message.type === 'answer') {
         console.log('Received answer, setting remote description');
+        if (pc.signalingState !== 'have-local-offer') {
+            console.error('Received answer in unexpected state:', pc.signalingState);
+            return;
+        }
         pc.setRemoteDescription(new RTCSessionDescription(message))
           .catch(onCreateSessionDescriptionError);
     } else if (message.type === 'candidate') {
@@ -32,19 +52,44 @@ socket.on('message', (message) => {
     }
 });
 
+
 function createPeerConnection() {
     try {
         pc = new RTCPeerConnection(pcConfig);
         pc.onicecandidate = handleIceCandidate;
-        pc.ontrack = handleRemoteStreamAdded; // 원격 스트림 핸들러
+        pc.ontrack = handleRemoteStreamAdded;
+        pc.oniceconnectionstatechange = () => {
+            if (pc.iceConnectionState === 'disconnected') {
+                console.log('ICE connection disconnected.');
+            }
+        };
+        console.log('PeerConnection created');
     } catch (e) {
         console.error('Failed to create PeerConnection:', e);
+        return;
+    }
+}
+
+function handleIceCandidate(event) {
+    if (event.candidate) {
+        console.log('Sending ICE candidate');
+        sendMessage({
+            type: 'candidate',
+            label: event.candidate.sdpMLineIndex,
+            id: event.candidate.sdpMid,
+            candidate: event.candidate.candidate
+        });
+    } else {
+        console.log('End of candidates.');
     }
 }
 
 function handleRemoteStreamAdded(event) {
-    remoteVideo.srcObject = event.streams[0];
     console.log('Remote stream added.');
+    remoteStream = event.streams[0];
+    if (remoteStream) {
+        remoteVideo.srcObject = remoteStream;
+    }
 }
 
 function sendMessage(message) {
@@ -67,7 +112,7 @@ function onCreateSessionDescriptionError(error) {
 
 function start() {
     createPeerConnection();
-    // Here we do not create an offer, as it's not the client that initiates the connection.
+    // No need to create offer on the receiving side
 }
 
 // Start the process

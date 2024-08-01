@@ -4,30 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PC Video Receiver</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        video {
-            border: 2px solid #333;
-            border-radius: 10px;
-        }
-    </style>
 </head>
 <body>
-    <h1>Video from Client</h1>
-    <video id="remoteVideo" autoplay width="640" height="480"></video>
+    <h1>Video from Raspberry Pi</h1>
+    <video id="remoteVideo" width="480px" autoplay></video>
     
-    <!-- Load socket.io client library -->
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <!-- Load adapter.js for WebRTC compatibility -->
+    <!--<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>-->
+    <script src="/socket.io/socket.io.js"></script>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-    <!-- Load custom RTC JavaScript file -->
     <script src="./rtc.js"></script>
 </body>
 </html>

@@ -1,3 +1,5 @@
+// 각자 화면만 보임(코드는 pc에서만 실행 가능)
+
 const http = require('http');
 const socketIO = require('socket.io');
 const nodeStatic = require('node-static');
