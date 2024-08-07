@@ -7,8 +7,8 @@ const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-const signalingServerUrl = 'http://192.168.219.102:8080';
-const socket = io.connect(signalingServerUrl);
+const signalingServerUrl = 'http://192.168.50.66:8080'; // 서버의 IP 주소와 포트
+const socket = io(signalingServerUrl);
 
 socket.on('message', (message) => {
     if (message.type === 'offer') {
@@ -47,6 +47,7 @@ socket.on('message', (message) => {
     }
 });
 
+// RTCPeerConnection생성을 통한 webRTC 연결 설정
 function createPeerConnection() {
     try {
         pc = new RTCPeerConnection(pcConfig);
@@ -64,7 +65,7 @@ function createPeerConnection() {
     }
 }
 
-
+// ICE 후보 수신하고 상대방에게 전송
 function handleIceCandidate(event) {
     if (event.candidate) {
         console.log('Sending ICE candidate');
@@ -79,6 +80,7 @@ function handleIceCandidate(event) {
     }
 }
 
+// 수신된 비디오 스트림 <video> 요소에 연결하여 표시
 function handleRemoteStreamAdded(event) {
     console.log('Remote stream added.');
     if (event.streams && event.streams[0]) {
@@ -93,12 +95,13 @@ function handleRemoteStreamAdded(event) {
     }
 }
 
-
+// socket사용하여 서버에 메시지 전달
 function sendMessage(message) {
     console.log('Client sending message:', message);
     socket.emit('message', message);
 }
 
+// 로컬 세션 설명 설정 후 상대에게 전송
 function setLocalAndSendMessage(sessionDescription) {
     pc.setLocalDescription(sessionDescription)
       .then(() => {
@@ -112,6 +115,7 @@ function onCreateSessionDescriptionError(error) {
     console.error('Failed to create session description:', error);
 }
 
+// 연결 시작
 function start() {
     createPeerConnection();
     // No need to create offer on the receiving side
