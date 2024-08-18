@@ -1,4 +1,5 @@
 // 각자 화면만 보임(코드는 pc에서만 실행 가능)
+// 다른 컴퓨터에서 접근 불가 --> turn 서버 설정, NAT 문제 
 
 const http = require('http');
 const socketIO = require('socket.io');
@@ -10,7 +11,7 @@ let fileServer = new nodeStatic.Server();
 // Create an HTTP server
 let app = http.createServer((req, res) => {
     fileServer.serve(req, res);
-}).listen(8080, () => {
+}).listen(8080, '0.0.0.0', () => {
     console.log('Server is listening on port 8080');
 });
 
@@ -30,6 +31,7 @@ io.on('connection', (socket) => {
     socket.on('create or join', (room) => {
         let clientsInRoom = io.sockets.adapter.rooms.get(room);
         let numClients = clientsInRoom ? clientsInRoom.size : 0;
+
         if (numClients === 0) {
             console.log('create room!');
             socket.join(room);
@@ -43,5 +45,6 @@ io.on('connection', (socket) => {
         } else {
             socket.emit('full', room);
         }
+        
     });
 });

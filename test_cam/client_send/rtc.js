@@ -93,6 +93,15 @@ function createPeerConnection() {
         pc = new RTCPeerConnection(pcConfig);
         pc.onicecandidate = handleIceCandidate;
         pc.ontrack = handleRemoteStreamAdded;
+
+         // 여기에서 ICE 연결 상태를 모니터링하는 이벤트 핸들러를 추가합니다.
+         pc.oniceconnectionstatechange = function(event) {
+            console.log('ICE connection state: ', pc.iceConnectionState);
+            if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+                console.log('ICE connection established!');
+            }
+        };
+        
         console.log("Created RTCPeerConnection");
     } catch (e) {
         alert("Cannot create RTCPeerConnection object");

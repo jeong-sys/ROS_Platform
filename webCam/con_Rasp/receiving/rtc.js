@@ -1,5 +1,7 @@
 "use strict";
 
+// 다른 컴퓨터에서 접근 불가
+
 let remoteVideo = document.getElementById("remoteVideo");
 let pc;
 
@@ -7,7 +9,7 @@ const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-const signalingServerUrl = 'http://192.168.50.66:8080'; // 서버의 IP 주소와 포트
+const signalingServerUrl = 'http://192.168.219.102:8080'; // 서버의 IP 주소와 포트
 const socket = io(signalingServerUrl);
 
 socket.on('message', (message) => {
@@ -96,7 +98,7 @@ function handleRemoteStreamAdded(event) {
 }
 
 // socket사용하여 서버에 메시지 전달
-function sendMessage(message) {
+function sendMessage(message) { // 동작 안함 , 비디오부터 동작되지 않음
     console.log('Client sending message:', message);
     socket.emit('message', message);
 }

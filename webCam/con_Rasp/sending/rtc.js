@@ -8,7 +8,7 @@ const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-const signalingServerUrl = 'http://192.168.50.66:8080'; // 서버의 IP 주소와 포트
+const signalingServerUrl = 'http://192.168.219.102:8080'; // 서버의 IP 주소와 포트
 const socket = io(signalingServerUrl);
 
 socket.on('message', (message) => {

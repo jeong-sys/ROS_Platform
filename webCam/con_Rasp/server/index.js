@@ -36,22 +36,23 @@ io.on('connection', (socket) => { // 클라이언트 연결시 호출, 클라이
         socket.broadcast.emit('message', message); // Broadcast the message to other clients
     });
 
-    socket.on('create or join', (room) => { // 클라이언트 특정 방 생성 및 참여시 호출
-        const clientsInRoom = io.sockets.adapter.rooms.get(room);
-        const numClients = clientsInRoom ? clientsInRoom.size : 0;
-        console.log('Room ' + room + ' now has ' + numClients + ' client(s)');
+    // socket.on('create or join', (room) => { // 클라이언트 특정 방 생성 및 참여시 호출
+    //     console.log('@@@@@@@@test join@@@@@@@@')
+    //     const clientsInRoom = io.sockets.adapter.rooms.get(room);
+    //     const numClients = clientsInRoom ? clientsInRoom.size : 0;
+    //     console.log('Room ' + room + ' now has ' + numClients + ' client(s)');
 
-        if (numClients === 0) {
-            console.log('Creating room!');
-            socket.join(room);
-            socket.emit('created', room, socket.id);
-        } else if (numClients === 1) {
-            console.log('Joining room!');
-            socket.join(room);
-            socket.emit('joined', room, socket.id);
-            io.to(room).emit('ready');
-        } else {
-            socket.emit('full', room);
-        }
-    });
+    //     if (numClients === 0) {
+    //         console.log('Creating room!');
+    //         socket.join(room);
+    //         socket.emit('created', room, socket.id);
+    //     } else if (numClients === 1) {
+    //         console.log('Joining room!');
+    //         socket.join(room);
+    //         socket.emit('joined', room, socket.id);
+    //         io.to(room).emit('ready');
+    //     } else {
+    //         socket.emit('full', room);
+    //     }
+    // });
 });
