@@ -8,19 +8,11 @@ const pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-const signalingServerUrl = 'http://192.168.219.102:8080'; // 서버의 IP 주소와 포트
+const signalingServerUrl = 'http://[ip]:8080'; // 서버의 IP 주소와 포트
 const socket = io(signalingServerUrl);
 
 socket.on('message', (message) => {
-    if (message.type === 'answer') {
-        console.log('Received answer, setting remote description');
-        if (pc.signalingState !== 'have-local-offer') {
-            console.error('Received answer in unexpected state:', pc.signalingState);
-            return;
-        }
-        pc.setRemoteDescription(new RTCSessionDescription(message))
-          .catch(onCreateSessionDescriptionError);
-    } else if (message.type === 'candidate') {
+    if (message.type === 'candidate') {
         console.log('Received ICE candidate');
         const candidate = new RTCIceCandidate({
             sdpMLineIndex: message.label,
