@@ -14,7 +14,7 @@ let pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-let room = 'foo';
+let room = 'test_rtc';
 let socket = io.connect();
 
 if (room !== '') {
