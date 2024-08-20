@@ -1,11 +1,10 @@
-// 연결시, (송신 버튼), (수신 버튼) 누르도록 하기 
-// -> 송신 버튼 누른 것만 영상이 찍히고
-// -> 수신 버튼 누른 것에는 영상이 보이도록 바꾸기
-
 "use strict";
 
 let localVideo = document.getElementById("localVideo");
 let remoteVideo = document.getElementById("remoteVideo");
+let startSenderButton = document.getElementById("startSender");
+let startReceiverButton = document.getElementById("startReceiver");
+
 let isInitiator = false;
 let isChannelReady = false;
 let isStarted = false;
@@ -13,7 +12,6 @@ let localStream;
 let remoteStream;
 let pc;
 
-// 소켓 통신
 let pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
@@ -46,10 +44,6 @@ socket.on('joined', room => {
     isChannelReady = true;
 });
 
-socket.on('log', array => {
-    console.log.apply(console, array);
-});
-
 socket.on('message', (message) => {
     console.log('Client received message:', message);
     if (message === 'got user media') {
@@ -71,22 +65,29 @@ socket.on('message', (message) => {
     }
 });
 
-// signaling서버, 소켓 정보 전송(다른 peer로 데이터 전송)
 function sendMessage(message) {
     console.log('Client sending message:', message);
     socket.emit('message', message);
 }
 
-// 사용자 미디어 데이터를 스트림으로 받아옴
-navigator.mediaDevices
-    .getUserMedia({ 
-        video: true,
-        audio: false,
-    })
-    .then(gotStream)
-    .catch((error) => console.error(error));
+// 송신 버튼 클릭 시 실행
+startSenderButton.onclick = () => {
+    navigator.mediaDevices
+        .getUserMedia({ 
+            video: true,
+            audio: false,
+        })
+        .then(gotStream)
+        .catch((error) => console.error(error));
+};
 
-// localStream과 localVideo에 출력할 영상 본인 카메라로 지정
+// 수신 버튼 클릭 시 실행
+startReceiverButton.onclick = () => {
+    if (isChannelReady) {
+        maybeStart();
+    }
+};
+
 function gotStream(stream) {
     console.log("Adding local stream");
     localStream = stream;
@@ -97,22 +98,12 @@ function gotStream(stream) {
     }
 }
 
-// RTC Peer 연결
-// RTCPeerConnection에 대한 객체 형성
-// iceCandidate(데이터 교환 대상의 EndPoint), iceCandidate 대상 생기면 handleIceCandidate실행
-// -> 시그널링 서버로 넘겨주어 상대방 Peer이 내 Stream 연결
 function createPeerConnection() {
     try {
-        // RTCPeerConnection 객체 생성
         pc = new RTCPeerConnection(pcConfig);
-
-        // ICE 후보 생성 시 호출되는 이벤트 핸들러
         pc.onicecandidate = handleIceCandidate;
-
-        // 원격 스트림 추가 시 호출되는 이벤트 핸들러
         pc.ontrack = handleRemoteStreamAdded;
 
-        // ICE 연결 상태 변경 시 호출되는 이벤트 핸들러
         pc.oniceconnectionstatechange = function(event) {
             console.log('ICE connection state: ', pc.iceConnectionState);
             if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
@@ -129,7 +120,6 @@ function createPeerConnection() {
     }
 }
 
-
 function handleIceCandidate(event) {
     console.log("iceCandidateEvent", event);
     if (event.candidate) {
@@ -144,30 +134,27 @@ function handleIceCandidate(event) {
     }
 }
 
-function handleCreateOfferError(event) {
-    console.log("createOffer() error: ", event);
-}
-
 function handleRemoteStreamAdded(event) {
     console.log("Remote stream added");
-    remoteStream = event.streams[0]; // 최신 API에서는 streams 배열에서 첫 번째 스트림을 선택
+    remoteStream = event.streams[0];
     remoteVideo.srcObject = remoteStream;
 }
 
-// 자신의 RTCPeerConnection 초기화, 상대방 RTCPeerConnection 연결
 function maybeStart() {
     console.log(">>MaybeStart(): ", isStarted, localStream, isChannelReady);
-    if (!isStarted && localStream && isChannelReady) {
+    if (!isStarted && (isInitiator || localStream) && isChannelReady) {
         console.log(">>>>> Creating peer connection");
         createPeerConnection();
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream)); // 최신 API에서는 addTrack 사용
+        if (localStream) {
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        }
         isStarted = true;
         console.log("isInitiator: ", isInitiator);
         if (isInitiator) {
-            doCall(); // 연결시, 실행(데이터 주고 받음)
+            doCall(); 
         }
     } else {
-        console.error('maybeStart not started! isStarted:',isStarted, 'localStream', !!localStream, 'isChannelReady:', isChannelReady);
+        console.error('maybeStart not started! isStarted:', isStarted, 'localStream:', !!localStream, 'isChannelReady:', isChannelReady);
     }
 }
 
@@ -190,6 +177,10 @@ function doAnswer() {
 function setLocalAndSendMessage(sessionDescription) {
     pc.setLocalDescription(sessionDescription);
     sendMessage(sessionDescription);
+}
+
+function handleCreateOfferError(error) {
+    console.log("createOffer() error: ", error);
 }
 
 function onCreateSessionDescriptionError(error) {
