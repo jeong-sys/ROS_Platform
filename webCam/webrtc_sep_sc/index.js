@@ -1,6 +1,3 @@
-// 각자 화면만 보임(코드는 pc에서만 실행 가능)
-// 다른 컴퓨터에서 접근 불가 --> turn 서버 설정, NAT 문제 
-
 const http = require('http');
 const socketIO = require('socket.io');
 const nodeStatic = require('node-static');
@@ -18,16 +15,16 @@ let app = http.createServer((req, res) => {
 // Create a Socket.IO server and attach it to the HTTP server
 let io = socketIO(app);
 
-// Handle socket connections
+let broadcasters = {}; // 방 별로 방송자를 기록
+
 io.on('connection', (socket) => {
     console.log('A user connected');
-    
+
     socket.on('message', (message) => {
         console.log('Received message:', message);
-        socket.broadcast.emit('message', message);
+        socket.broadcast.to(message.room).emit('message', message);
     });
 
-    // Handle room creation and joining (if applicable)
     socket.on('create or join', (room) => {
         let clientsInRoom = io.sockets.adapter.rooms.get(room);
         let numClients = clientsInRoom ? clientsInRoom.size : 0;
@@ -38,13 +35,28 @@ io.on('connection', (socket) => {
             socket.emit('created', room, socket.id);
         } else if (numClients === 1) {
             console.log('join room!');
-            io.to(room).emit('join', room);
             socket.join(room);
             socket.emit('joined', room, socket.id);
             io.to(room).emit('ready');
         } else {
             socket.emit('full', room);
         }
-        
+    });
+
+    socket.on('broadcast', (room) => {
+        if (!broadcasters[room]) {
+            broadcasters[room] = socket.id;
+            io.to(room).emit('broadcast', socket.id);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        // 방을 떠나면 방송 상태 초기화
+        for (let room in broadcasters) {
+            if (broadcasters[room] === socket.id) {
+                delete broadcasters[room];
+                io.to(room).emit('stopBroadcast');
+            }
+        }
     });
 });

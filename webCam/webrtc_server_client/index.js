@@ -1,6 +1,3 @@
-// 각자 화면만 보임(코드는 pc에서만 실행 가능)
-// 다른 컴퓨터에서 접근 불가 --> turn 서버 설정, NAT 문제 
-
 const http = require('http');
 const socketIO = require('socket.io');
 const nodeStatic = require('node-static');

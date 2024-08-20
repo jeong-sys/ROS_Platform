@@ -2,15 +2,13 @@
 
 let localVideo = document.getElementById("localVideo");
 let remoteVideo = document.getElementById("remoteVideo");
-let startSenderButton = document.getElementById("startSender");
-let startReceiverButton = document.getElementById("startReceiver");
-
 let isInitiator = false;
 let isChannelReady = false;
 let isStarted = false;
 let localStream;
 let remoteStream;
 let pc;
+let broadcasterId;
 
 let pcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -35,7 +33,6 @@ socket.on('full', room => {
 
 socket.on('join', room => {
     console.log('Another peer made a request to join room ' + room);
-    console.log('This peer is the initiator of room ' + room + '!');
     isChannelReady = true;
 });
 
@@ -44,10 +41,31 @@ socket.on('joined', room => {
     isChannelReady = true;
 });
 
+socket.on('broadcast', (id) => {
+    broadcasterId = id;
+    console.log('Receiving broadcast from:', id);
+    if (socket.id !== id) {  // 다른 클라이언트에서만 수신
+        maybeStart();  // 방송 시작 시 자동으로 연결 시작
+    } else {
+        initializeStream();  // 송신자는 방송 시작
+    }
+});
+
+socket.on('stopBroadcast', () => {
+    console.log('Broadcasting stopped');
+    isStarted = false;
+    if (pc) {
+        pc.close();
+        pc = null;
+    }
+});
+
 socket.on('message', (message) => {
     console.log('Client received message:', message);
-    if (message === 'got user media') {
-        maybeStart();
+    if (message.type === 'got user media') {
+        if (broadcasterId === socket.id) {
+            maybeStart();
+        }
     } else if (message.type === 'offer') {
         if (!isInitiator && !isStarted) {
             maybeStart();
@@ -67,35 +85,21 @@ socket.on('message', (message) => {
 
 function sendMessage(message) {
     console.log('Client sending message:', message);
-    socket.emit('message', message);
+    socket.emit('message', { ...message, room });
 }
 
-// 송신 버튼 클릭 시 실행
-startSenderButton.onclick = () => {
+function initializeStream() {
     navigator.mediaDevices
         .getUserMedia({ 
             video: true,
             audio: false,
         })
-        .then(gotStream)
+        .then((stream) => {
+            localStream = stream;
+            localVideo.srcObject = stream;  // 방송자에게만 로컬 비디오 표시
+            sendMessage({ type: 'got user media' });
+        })
         .catch((error) => console.error(error));
-};
-
-// 수신 버튼 클릭 시 실행
-startReceiverButton.onclick = () => {
-    if (isChannelReady) {
-        maybeStart();
-    }
-};
-
-function gotStream(stream) {
-    console.log("Adding local stream");
-    localStream = stream;
-    localVideo.srcObject = stream;
-    sendMessage("got user media");
-    if (isInitiator) {
-        maybeStart();
-    }
 }
 
 function createPeerConnection() {
@@ -103,7 +107,6 @@ function createPeerConnection() {
         pc = new RTCPeerConnection(pcConfig);
         pc.onicecandidate = handleIceCandidate;
         pc.ontrack = handleRemoteStreamAdded;
-
         pc.oniceconnectionstatechange = function(event) {
             console.log('ICE connection state: ', pc.iceConnectionState);
             if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
@@ -112,7 +115,6 @@ function createPeerConnection() {
                 console.error('ICE connection failed');
             }
         };
-
         console.log("Created RTCPeerConnection");
     } catch (e) {
         alert("Cannot create RTCPeerConnection object");
@@ -141,20 +143,16 @@ function handleRemoteStreamAdded(event) {
 }
 
 function maybeStart() {
-    console.log(">>MaybeStart(): ", isStarted, localStream, isChannelReady);
-    if (!isStarted && (isInitiator || localStream) && isChannelReady) {
+    if (!isStarted && broadcasterId && isChannelReady) {
         console.log(">>>>> Creating peer connection");
         createPeerConnection();
-        if (localStream) {
+        if (socket.id === broadcasterId) {
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         }
         isStarted = true;
-        console.log("isInitiator: ", isInitiator);
-        if (isInitiator) {
-            doCall(); 
+        if (socket.id === broadcasterId) {
+            doCall();
         }
-    } else {
-        console.error('maybeStart not started! isStarted:', isStarted, 'localStream:', !!localStream, 'isChannelReady:', isChannelReady);
     }
 }
 
@@ -179,10 +177,14 @@ function setLocalAndSendMessage(sessionDescription) {
     sendMessage(sessionDescription);
 }
 
-function handleCreateOfferError(error) {
-    console.log("createOffer() error: ", error);
-}
-
 function onCreateSessionDescriptionError(error) {
     console.error("Failed to create session description", error);
 }
+
+// 송신 버튼 클릭 시 방송 시작
+document.getElementById('startBroadcast').addEventListener('click', () => {
+    if (!broadcasterId) {
+        broadcasterId = socket.id;  // 본인이 방송자임을 설정
+        socket.emit('broadcast', room);
+    }
+});

@@ -1,25 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC One-Way Communication</title>
-</head>
-<body>
-    <h1>WebRTC One-Way</h1>
-    
-    <!-- 송신 버튼 -->
-    <button id="startSender">Sending</button>
-    
-    <!-- 수신 버튼 -->
-    <button id="startReceiver">Receiving</button>
+<html>
 
-    <!-- 비디오 태그 -->
-    <video id="localVideo" autoplay playsinline muted></video>
-    <video id="remoteVideo" autoplay playsinline></video>
+<head>
+    <meta charset="utf-8" />
+    <title>WebRtc tutorial</title>
+</head>
+
+<body>
+    <div>
+        <video id="localVideo" autoplay width="480px"></video>
+        <video id="remoteVideo" width="480px" autoplay></video>
+    </div>
+    <button id="startBroadcast">Start Broadcast</button> <!-- 송신 버튼 추가 -->
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <script src="./rtc.js"></script>
 </body>
+
 </html>
+
