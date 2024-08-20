@@ -1,6 +1,11 @@
 ### WebRTC
 - https://wormwlrm.github.io/2021/01/24/Introducing-WebRTC.html
 - https://velog.io/@yyong3519/WebRTC-%EA%B5%AC%ED%98%84%EC%98%88%EC%A0%9C1
+- https://developer.mozilla.org/ko/docs/Web/API/WebRTC_API/Signaling_and_video_calling // Signaling Server
+
+### Signaling Server
+- SDP : P2P 연결을 설명하는 표준(오디오 및 비디오의 코덱, 소스 코드, 타이밍 정보 포함)
+
 
 ### 외부 사이트 카메라 권한 허용 방법 
 - chrome://flags/ 접속
@@ -18,7 +23,8 @@
 - PC(1) 에서 서버 실행
 - PC(1) 에서 내부 IP로 접속
 - PC(2) 에서 외부 IP로 접속
-- commit
+- 양방향이므로 카메라 한쪽이라도 없으면 동작 안함
 
-
-
+#### 단방향 통신
+- 
+ 
