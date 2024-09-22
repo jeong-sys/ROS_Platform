@@ -34,6 +34,15 @@ io.sockets.on('connection', function(socket) {
     log('Client said: ', message);
     // for a real app, would be room-only (not broadcast)
 
+    // 메시지가 SDP일 경우 네트워크 정보만 추출하여 출력
+    if (message.type === 'offer' || message.type === 'answer') {
+      const sdpLines = message.sdp.split('\r\n');  // SDP를 줄 단위로 분리
+      const networkInfo = sdpLines.filter(line => line.startsWith('c='));  // 'c='로 시작하는 네트워크 정보만 추출
+
+      // 네트워크 정보 출력
+      console.log('Network Information from SDP:', networkInfo);
+    }
+      
     // 화상 채팅 중 한사람이라도 채팅을 나가면(bye)인 경우 채팅방 비우기
     if(message==="bye" && socket.rooms['foo']){
       io.of('/').in('foo').clients((error, socketIds) => {

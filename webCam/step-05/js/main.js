@@ -71,12 +71,14 @@ socket.on('message', function(message) {
   if (message === 'got user media') {
     maybeStart();
   } else if (message.type === 'offer') {
+    console.log('Received Offer SDP:', message.sdp);  // Offer SDP 확인
     if (!isInitiator && !isStarted) {
       maybeStart();
     }
     pc.setRemoteDescription(new RTCSessionDescription(message));
     doAnswer();
   } else if (message.type === 'answer' && isStarted) {
+    console.log('Received Answer SDP:', message.sdp);  // Answer SDP 확인
     pc.setRemoteDescription(new RTCSessionDescription(message));
   } else if (message.type === 'candidate' && isStarted) {
     var candidate = new RTCIceCandidate({
@@ -183,15 +185,9 @@ function setupDataChannel() {
 
 function sendChatMessage() {
   var message = document.getElementById('chatInput').value;
-
-  if (dataChannel && dataChannel.readyState === 'open') { // 채널이 열려 있을 때만 전송
-    dataChannel.send(message);
-    displayChatMessage(message); // 자신에게도 메시지를 표시
-  } else {
-    console.log("DataChannel is not open. Message not sent.");
-  }
+  dataChannel.send(message);
+  displayChatMessage(message);
 }
-
 
 function displayChatMessage(message) {
   var chatBox = document.getElementById('chatMessages');
@@ -233,7 +229,9 @@ function doAnswer() {
 
 function setLocalAndSendMessage(sessionDescription) {
   pc.setLocalDescription(sessionDescription);
-  console.log('setLocalAndSendMessage sending message', sessionDescription);
+  // socket.emit('message', sessionDescription); // 서버로 SDP전송
+  // console.log('setLocalAndSendMessage sending message', sessionDescription);
+  console.log('setLocalAndSendMessage sending SDP:', sessionDescription.sdp); //sdp 콘솔 출력
   sendMessage(sessionDescription);
 }
 
