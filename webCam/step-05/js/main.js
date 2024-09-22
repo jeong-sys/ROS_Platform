@@ -229,10 +229,10 @@ function doAnswer() {
 
 function setLocalAndSendMessage(sessionDescription) {
   pc.setLocalDescription(sessionDescription);
-  // socket.emit('message', sessionDescription); // 서버로 SDP전송, 중복
+  // socket.emit('message', sessionDescription); // 서버로 SDP전송
   // console.log('setLocalAndSendMessage sending message', sessionDescription);
   console.log('setLocalAndSendMessage sending SDP:', sessionDescription.sdp); //sdp 콘솔 출력
-  sendMessage(sessionDescription); // 전송
+  sendMessage(sessionDescription);
 }
 
 function onCreateSessionDescriptionError(error) {
