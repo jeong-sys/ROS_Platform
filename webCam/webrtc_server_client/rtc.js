@@ -194,8 +194,26 @@ function doAnswer() {
 }
 
 function setLocalAndSendMessage(sessionDescription) {
+
+    // 'o=' 정보만 추출
+    let sessionOwner = extractSessionOwnerInfo(sessionDescription.sdp);
+    console.log("Session Owner (o=):", sessionOwner);
+
+    // 기존 로직: SDP 설정 및 메시지 전송
     pc.setLocalDescription(sessionDescription);
     sendMessage(sessionDescription);
+}
+
+function extractSessionOwnerInfo(sdp) {
+    // SDP에서 'o='로 시작하는 세션 주체 정보를 추출하는 정규 표현식
+    const sessionOwnerRegex = /^o=([^\r\n]*)/m;
+    const match = sdp.match(sessionOwnerRegex);
+    
+    if (match) {
+        return match[0]; // 'o='로 시작하는 전체 라인 반환
+    } else {
+        return null; // 매칭되는 정보가 없을 경우 null 반환
+    }
 }
 
 function onCreateSessionDescriptionError(error) {
