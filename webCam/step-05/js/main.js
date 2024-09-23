@@ -10,9 +10,10 @@ var turnReady;
 var dataChannel;
 
 var pcConfig = {
-  'iceServers': [{
-    'urls': 'stun:stun.l.google.com:19302'
-  }]
+  'iceServers': [
+    {'urls': 'stun:stun.l.google.com:19302'},
+    // {'urls': 'turn:your-turn-server-url', 'username': 'user', 'credential': 'password'} : turn Server 
+  ]
 };
 
 // Set up audio and video regardless of what devices are present.
@@ -96,7 +97,7 @@ socket.on('message', function(message) {
 var localVideo = document.querySelector('#localVideo');
 var remoteVideo = document.querySelector('#remoteVideo');
 
-navigator.mediaDevices.getUserMedia({
+navigator.mediaDevices.getUserMedia({ // 
   audio: false,
   video: true
 })
@@ -104,6 +105,13 @@ navigator.mediaDevices.getUserMedia({
 .catch(function(e) {
   alert('getUserMedia() error: ' + e.name);
 });
+
+// 라즈베리파이 설정
+/*
+1. 브라우저 기반말고 터미널로 왔다갔다하기
+2. 명령 주고 받는거 구현하기
+*/
+
 
 function gotStream(stream) {
   console.log('Adding local stream.');
