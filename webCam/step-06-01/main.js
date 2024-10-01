@@ -74,10 +74,16 @@ socket.on('message', async function (message) {
           candidate: message.candidate
         });
 
-        // ICE 후보 추가 (제한 완화: 로컬, TCP 후보도 추가)
-        await pc.addIceCandidate(candidate);
-        console.log('Successfully added ICE candidate');
-        
+        // TCP 패시브 후보 무시
+        if (candidate.candidate.includes('tcp') && candidate.candidate.includes('passive')) {
+          console.log('Ignoring TCP passive candidate:', candidate);
+        } else if (candidate.candidate.includes('127.0.0.1') || candidate.candidate.includes('::1')) {
+          console.log('Ignoring localhost candidate:', candidate);
+        } else {
+          await pc.addIceCandidate(candidate);
+          console.log('Successfully added ICE candidate');
+        }
+
       } else {
         console.log("Remote description not set, cannot add ICE candidate yet");
       }
@@ -147,12 +153,21 @@ function createPeerConnection() {
 // ICE 후보 처리
 function handleIceCandidate(event) {
   if (event.candidate) {
-    sendMessage({
-      type: 'candidate',
-      label: event.candidate.sdpMLineIndex,
-      id: event.candidate.sdpMid,
-      candidate: event.candidate.candidate
-    });
+    // TCP 패시브 후보 무시 및 기타 불필요한 후보 무시
+    if (event.candidate.candidate.includes('tcp') && event.candidate.candidate.includes('passive')) {
+      console.log('Ignoring TCP passive candidate:', event.candidate);
+    } else if (event.candidate.candidate.includes('127.0.0.1') || event.candidate.candidate.includes('::1')) {
+      console.log('Ignoring localhost candidate:', event.candidate);
+    } else {
+      sendMessage({
+        type: 'candidate',
+        label: event.candidate.sdpMLineIndex,
+        id: event.candidate.sdpMid,
+        candidate: event.candidate.candidate
+      });
+    }
+  } else {
+    console.log('End of candidates.');
   }
 }
 
@@ -160,14 +175,23 @@ function handleIceCandidate(event) {
 function receiveChannelCallback(event) {
   console.log('DataChannel received');
   dataChannel = event.channel;
-  setupDataChannel();
-  console.log('DataChannel is set up for receiving messages');
+  
+  // 데이터 채널이 열린 이후 채팅을 시작하도록 변경
+  dataChannel.onopen = () => {
+    console.log('DataChannel is open and ready');
+    startChat();
+  };
+
+  dataChannel.onmessage = (event) => {
+    console.log('Received message:', event.data);
+  };
 }
+
 
 function setupDataChannel() {
   dataChannel.onopen = function () {
     console.log('Data channel is open');
-    startChat();
+    startChat();  // DataChannel이 열리면 채팅 시작
   };
 
   dataChannel.onclose = function () {
@@ -188,7 +212,8 @@ function setupDataChannel() {
 function startChat() {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
+    terminal: true,
   });
 
   rl.on('line', (input) => {
