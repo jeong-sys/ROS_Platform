@@ -23,7 +23,7 @@ const sdpConstraints = {
 const room = 'foo'; // 방 이름 고정
 
 // Signaling 서버에 연결
-const socket = io.connect('http://127.0.0.1:3000'); // Signaling 서버 주소
+const socket = io.connect('http://192.168.50.140:3000'); // Signaling 서버 주소
 
 if (room !== '') {
   socket.emit('create or join', room);
