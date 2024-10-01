@@ -52,27 +52,44 @@ socket.on('message', async function (message) {
   console.log('Client received message:', message);
 
   if (message.type === 'offer') {
-    console.log('Received offer:',message);
+    console.log('Received offer:', message);
     if (!isInitiator && !isStarted) {
-      console.log('Not initiator and not started, starting webRTC connection to answer offer')
+      console.log('Not initiator and not started, starting WebRTC connection to answer offer');
       await maybeStart();
     }
-    pc.setRemoteDescription(new wrtc.RTCSessionDescription(message));
+    await pc.setRemoteDescription(new wrtc.RTCSessionDescription(message));
     await doAnswer();
+
   } else if (message.type === 'answer' && isStarted) {
-    console.log('Received anser:', message)
-    pc.setRemoteDescription(new wrtc.RTCSessionDescription(message));
+    console.log('Received answer:', message);
+    await pc.setRemoteDescription(new wrtc.RTCSessionDescription(message));
+
   } else if (message.type === 'candidate' && isStarted) {
-    console.log('Received ICE candidate:', message)
-    const candidate = new wrtc.RTCIceCandidate({
-      sdpMLineIndex: message.label,
-      candidate: message.candidate
-    });
-    pc.addIceCandidate(candidate);
+    console.log('Received ICE candidate:', message);
+
+    try {
+      if (pc.remoteDescription) {
+        const candidate = new wrtc.RTCIceCandidate({
+          sdpMLineIndex: message.label,
+          candidate: message.candidate
+        });
+
+        // ICE 후보 추가 (제한 완화: 로컬, TCP 후보도 추가)
+        await pc.addIceCandidate(candidate);
+        console.log('Successfully added ICE candidate');
+        
+      } else {
+        console.log("Remote description not set, cannot add ICE candidate yet");
+      }
+    } catch (error) {
+      console.error('Error adding received ICE candidate: ', error);
+    }
+
   } else if (message === 'bye' && isStarted) {
     handleRemoteHangup();
   }
 });
+
 
 function sendMessage(message) {
   socket.emit('message', message);
@@ -94,11 +111,32 @@ async function maybeStart() {
 }
 
 // PeerConnection 생성
+// function createPeerConnection() {
+//   try {
+//     pc = new wrtc.RTCPeerConnection(pcConfig);
+//     pc.onicecandidate = handleIceCandidate;
+//     pc.ondatachannel = receiveChannelCallback;
+//     console.log('Created RTCPeerConnection');
+//   } catch (e) {
+//     console.error('Failed to create PeerConnection:', e);
+//     return;
+//   }
+// }
+
 function createPeerConnection() {
   try {
     pc = new wrtc.RTCPeerConnection(pcConfig);
     pc.onicecandidate = handleIceCandidate;
-    pc.ondatachannel = receiveChannelCallback;
+
+    if (isInitiator) {
+      console.log("This peer is initiator, creating DataChannel");
+      dataChannel = pc.createDataChannel('chat');  // Initiator만 DataChannel 생성
+      setupDataChannel();  // Initiator에서만 데이터 채널 설정
+    } else {
+      pc.ondatachannel = receiveChannelCallback;  // Non-Initiator는 DataChannel 수신 처리
+      console.log("This peer is non-initiator, waiting for DataChannel");
+    }
+
     console.log('Created RTCPeerConnection');
   } catch (e) {
     console.error('Failed to create PeerConnection:', e);
@@ -122,16 +160,16 @@ function handleIceCandidate(event) {
 
 // DataChannel 수신 처리 (비 Initiator)
 function receiveChannelCallback(event) {
-  console.log('DataChannel received');  ///////////////////////// 여기서부터 안됨
+  console.log('DataChannel received');
   dataChannel = event.channel;
   setupDataChannel();
+  console.log('DataChannel is set up for receiving messages');
 }
 
-// DataChannel 설정
 function setupDataChannel() {
   dataChannel.onopen = function () {
     console.log('Data channel is open');
-    startChat();  // 채팅 입력 대기
+    startChat();
   };
 
   dataChannel.onclose = function () {
@@ -143,9 +181,10 @@ function setupDataChannel() {
   };
 
   dataChannel.onmessage = function (event) {
-    console.log('Received message:', event.data);  // 수신 메시지 출력
+    console.log('Received message:', event.data);
   };
 }
+
 
 // 채팅 입력 처리
 function startChat() {
