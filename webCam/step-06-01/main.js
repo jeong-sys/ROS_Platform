@@ -11,8 +11,17 @@ let isStarted = false;
 let pc;
 let dataChannel;
 
+
+console.log("test@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 const pcConfig = {
-  'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]
+  iceServers: [
+  {urls: 'stun:stun.l.google.com:19302'},
+  {
+    urls: 'turn:203.230.104.168:3478',
+    username:'webrtc-server',
+    credential:'040416',
+  },
+  ],
 };
 
 const sdpConstraints = {
@@ -24,7 +33,7 @@ const sdpConstraints = {
 const room = 'foo';
 
 // Signaling 서버에 연결
-const socket = io.connect('http://192.168.50.140:3000');
+const socket = io.connect('http://192.168.50.66:3000');
 
 if (room !== '') {
   socket.emit('create or join', room);
@@ -150,12 +159,21 @@ function createPeerConnection() {
 // ICE 후보 처리
 function handleIceCandidate(event) {
   if (event.candidate) {
-    sendMessage({
-      type: 'candidate',
-      label: event.candidate.sdpMLineIndex,
-      id: event.candidate.sdpMid,
-      candidate: event.candidate.candidate
-    });
+    console.log('Generated ICE candidate:', event.candidate.candidate);
+
+    // localhost와 관련된 후보를 무시
+    if (event.candidate.candidate.includes('127.0.0.1') || event.candidate.candidate.includes('::1')) {
+      console.log('Ignoring localhost candidate:', event.candidate.candidate);
+    } else if (event.candidate.candidate.includes('0.0.0.0')) {
+      console.log('Ignoring invalid candidate:', event.candidate.candidate);
+    } else {
+      sendMessage({
+        type: 'candidate',
+        label: event.candidate.sdpMLineIndex,
+        id: event.candidate.sdpMid,
+        candidate: event.candidate.candidate
+      });
+    }
   } else {
     console.log('End of candidates.');
   }
