@@ -11,8 +11,6 @@ let isStarted = false;
 let pc;
 let dataChannel;
 
-
-console.log("test@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 const pcConfig = {
   iceServers: [
   {urls: 'stun:stun.l.google.com:19302'},
@@ -80,35 +78,25 @@ socket.on('message', async function (message) {
 
   } else if (message.type === 'answer' && isStarted) {
     await pc.setRemoteDescription(new wrtc.RTCSessionDescription(message));
-
   } else if (message.type === 'candidate' && isStarted) {
-    if (pc.remoteDescription) {
-      const candidate = new wrtc.RTCIceCandidate({
+    if (message.candidate) {  // candidate 값이 유효한지 확인
+      var candidate = new wrtc.RTCIceCandidate({
         sdpMLineIndex: message.label,
+        sdpMid: message.id,
         candidate: message.candidate
       });
-
-      // ICE 후보 필터링
-      if (candidate.candidate.includes('127.0.0.1') || candidate.candidate.includes('::1')) {
-        console.log('Ignoring localhost candidate:', candidate.candidate);
-      } else if (candidate.candidate.includes('0.0.0.0')) {
-        console.log('Ignoring invalid candidate:', candidate.candidate);
-      } else {
-        try {
-          await pc.addIceCandidate(candidate);
-          console.log('Added ICE candidate:', candidate);
-        } catch (error) {
-          console.error('Error adding received ICE candidate: ', error);
-        }
+      try {
+        await pc.addIceCandidate(candidate);
+      } catch (error) {
+        console.error('Error adding received ICE candidate', error);
       }
     } else {
-      console.log('Remote description not set yet, cannot add ICE candidate');
+      console.error('Received invalid ICE candidate');
     }
   } else if (message === 'bye' && isStarted) {
     handleRemoteHangup();
   }
 });
-
 
 function sendMessage(message) {
   console.log('Client sending message: ', message);
@@ -156,43 +144,41 @@ function createPeerConnection() {
   }
 }
 
-// ICE 후보 처리
 function handleIceCandidate(event) {
+  console.log('icecandidate event: ', event);
   if (event.candidate) {
-    console.log('Generated ICE candidate:', event.candidate.candidate);
-
-    // localhost와 관련된 후보를 무시
-    if (event.candidate.candidate.includes('127.0.0.1') || event.candidate.candidate.includes('::1')) {
-      console.log('Ignoring localhost candidate:', event.candidate.candidate);
-    } else if (event.candidate.candidate.includes('0.0.0.0')) {
-      console.log('Ignoring invalid candidate:', event.candidate.candidate);
-    } else {
-      sendMessage({
-        type: 'candidate',
-        label: event.candidate.sdpMLineIndex,
-        id: event.candidate.sdpMid,
-        candidate: event.candidate.candidate
-      });
-    }
+    sendMessage({
+      type: 'candidate',
+      label: event.candidate.sdpMLineIndex,
+      id: event.candidate.sdpMid,
+      candidate: event.candidate.candidate
+    });
   } else {
     console.log('End of candidates.');
   }
 }
 
-// DataChannel 수신 처리 (비 Initiator)
+// DataChannel 수신 처리
+// function receiveChannelCallback(event) {
+//   console.log('DataChannel received');
+//   dataChannel = event.channel;
+  
+//   dataChannel.onopen = () => {
+//     console.log('DataChannel is open and ready');
+//     startChat();
+//   };
+
+//   dataChannel.onmessage = (event) => {
+//     console.log('Received message:', event.data);
+//   };
+// }
+
 function receiveChannelCallback(event) {
   console.log('DataChannel received');
-  dataChannel = event.channel;
-  
-  dataChannel.onopen = () => {
-    console.log('DataChannel is open and ready');
-    startChat();
-  };
-
-  dataChannel.onmessage = (event) => {
-    console.log('Received message:', event.data);
-  };
+  dataChannel = event.channel;  // 받은 DataChannel을 dataChannel로 설정
+  setupDataChannel();  // 받은 DataChannel에서 채팅을 시작하도록 설정
 }
+
 
 function setupDataChannel() {
   dataChannel.onopen = function () {
@@ -225,7 +211,7 @@ function startChat() {
   rl.on('line', (input) => {
     if (dataChannel && dataChannel.readyState === 'open') {
       dataChannel.send(input);
-      console.log(`You: ${input}`);
+      // console.log(`You: ${input}`);
     } else {
       console.log('Data channel is not open, cannot send message.');
     }
